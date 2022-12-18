@@ -31,7 +31,7 @@ def url_reader(url, status_logger_name):
 		open_connection = build_opener(HTTPCookieProcessor())
 		html_code = open_connection.open(url)
 		'''Closing the abstract window after each abstract has been extracted'''
-		return html_code			
+		return html_code
 	except (UnboundLocalError, urllib.error.HTTPError):
 		pass
 
@@ -67,7 +67,7 @@ def url_generator(start_url, query_string, status_logger_name):
 	determiner = test_soup.findAll('span', {'class':'number-of-pages'})[0].text
 	'''We generate the urls_to_scrape from the stripped down determiner element'''
 	urls_to_scrape = [(start_url+str(counter)+"?facet-content-type=\"Article\"&query="+query_string+"&facet-language=\"En\"") for counter in range(1, (int(determiner.replace(',', '')) + 1))]
-	
+
 	url_generator_stop_status_key = determiner.replace(',', '') + " page URLs have been obtained"
 	status_logger(status_logger_name, url_generator_stop_status_key)
 
@@ -91,7 +91,7 @@ def abstract_word_extractor(abstract, abstract_title, abstract_year, permanent_w
 	against their year of appearence.'''
 	abstract_word_sorter_start_status_key = "Adding:"+" "+abstract_title+" "+"to the archival list"
 	status_logger(status_logger_name, abstract_word_sorter_start_status_key)
-	
+
 	'''This line of code converts the entire abstract into lower case'''
 	abstract = abstract.lower()
 	'''Converting the abstract into a list of words'''
@@ -131,7 +131,7 @@ def abstract_year_dictionary_dumper(abstract_word_dictionary, abstracts_log_name
 		for key, value in abstract_word_dictionary.items():
 			year = key
 			writer.writerow([year, value])
-	
+
 	permanent_word_sorter_list_end_status_key = "Dumped the entire dictionary to the disc"
 	status_logger(status_logger_name, permanent_word_sorter_list_end_status_key)
 
@@ -140,12 +140,13 @@ def abstract_page_scraper(abstract_url, abstract_input_tag_id, abstracts_log_nam
 	 that is being referenced within the list of abstracts'''
 	abstract_page_scraper_status_key="Abstract ID:"+" "+abstract_input_tag_id
 	status_logger(status_logger_name, abstract_page_scraper_status_key)
-	
+
 	abstract_page_url = abstract_url+abstract_input_tag_id
 	abstract_page = url_reader(abstract_page_url, status_logger_name)
 	abstract_soup = page_souper(abstract_page, status_logger_name)
 	title = title_scraper(abstract_soup, status_logger_name)
 	abstract_date = abstract_date_scraper(title, abstract_soup, status_logger_name)
+	download_url = download_url_scraper(abstract_soup, status_logger_name)
 
 	'''Due to repeated attribute errors with respect to scraping the authors name, these failsafes had to be put in place.'''
 	try:
@@ -160,13 +161,13 @@ def abstract_page_scraper(abstract_url, abstract_input_tag_id, abstracts_log_nam
 	except AttributeError:
 		abstract = "Abstract not available"
 
-	abstract_database_writer(abstract_page_url, title, author, abstract, abstracts_log_name, abstract_date, status_logger_name)
+	abstract_database_writer(abstract_page_url, title, author, download_url, abstract, abstracts_log_name, abstract_date, status_logger_name)
 	analytical_abstract_database_writer(title, author, abstract, abstracts_log_name, status_logger_name)
 
 def abstract_crawler(abstract_url, abstract_id_log_name, abstracts_log_name, permanent_word_sorter_list, site_url_index, status_logger_name):
 	abstract_crawler_start_status_key = "Entered the Abstract Crawler"
 	status_logger(status_logger_name, abstract_crawler_start_status_key)
-	
+
 	abstract_crawler_temp_index  = site_url_index
 	'''This function crawls the page and access each and every abstract'''
 	abstract_input_tag_ids = abstract_id_database_reader(abstract_id_log_name, abstract_crawler_temp_index, status_logger_name)
@@ -185,7 +186,7 @@ def abstract_crawler(abstract_url, abstract_id_log_name, abstracts_log_name, per
 
 def analytical_abstract_database_writer(title, author, abstract, abstracts_log_name, status_logger_name):
 	'''This function will generate a secondary abstract file that will contain only the abstract.
-	The  abstract file generated will be passed onto the Visualizer and Analyzer function, as opposed to the complete 
+	The  abstract file generated will be passed onto the Visualizer and Analyzer function, as opposed to the complete
 	abstract log file containing lot of garbage words in addition to the abstract text.'''
 	analytical_abstract_database_writer_start_status_key = "Writing"+" "+title+" "+"by"+" "+author+" "+"to analytical abstracts file"
 	status_logger(status_logger_name, analytical_abstract_database_writer_start_status_key)
@@ -198,12 +199,12 @@ def analytical_abstract_database_writer(title, author, abstract, abstracts_log_n
 	analytical_abstract_database_writer_stop_status_key = "Written"+" "+title+" "+"to disc"
 	status_logger(status_logger_name, analytical_abstract_database_writer_stop_status_key)
 
-def abstract_database_writer(abstract_page_url, title, author, abstract, abstracts_log_name, abstract_date, status_logger_name):
+def abstract_database_writer(abstract_page_url, title, author, download_url, abstract, abstracts_log_name, abstract_date, status_logger_name):
 	'''This function makes text files to contain the abstracts for future reference.
 	It holds: 1) Title, 2) Author(s), 3) Abstract'''
 	abstract_database_writer_start_status_key = "Writing"+" "+title+" "+"by"+" "+author+" "+"to disc"
 	status_logger(status_logger_name, abstract_database_writer_start_status_key)
-	
+
 	abstracts_csv_log = open(abstracts_log_name+'.csv', 'a')
 	abstracts_txt_log = open(abstracts_log_name+'.txt', 'a')
 	abstracts_txt_log.write("Title:"+" "+title)
@@ -213,6 +214,8 @@ def abstract_database_writer(abstract_page_url, title, author, abstract, abstrac
 	abstracts_txt_log.write("Date:"+" "+abstract_date)
 	abstracts_txt_log.write('\n')
 	abstracts_txt_log.write("URL:"+" "+abstract_page_url)
+	abstracts_txt_log.write('\n')
+	abstracts_txt_log.write("Download URL:"+" "+download_url)
 	abstracts_txt_log.write('\n')
 	abstracts_txt_log.write("Abstract:"+" "+abstract)
 	abstracts_csv_log.write(abstract)
@@ -287,7 +290,7 @@ def title_scraper(abstract_soup, status_logger_name):
 	'''This function scrapes the title of the text from the abstract'''
 	title_scraper_start_status_key = "Scraping the title of the abstract"
 	status_logger(status_logger_name, title_scraper_start_status_key)
-	
+
 	'''Purpose of this block is to retrieve the title of the text even if an AttributeError arises'''
 	try:
 		title = str(abstract_soup.find('h1', {'class':'c-article-title'}).text.encode('utf-8'))[1:]
@@ -303,15 +306,35 @@ def title_scraper(abstract_soup, status_logger_name):
 
 	title_scraper_end_status_key = "Scraped the title of the abstract"
 	status_logger(status_logger_name, title_scraper_end_status_key)
-	
+
 	return title
+
+def download_url_scraper(abstract_soup, status_logger_name):
+	'''This function scrapes the download URL of the fulltext'''
+	download_url_scraper_start_status_key = "Scraping the download link of the fulltext"
+	status_logger(status_logger_name, download_url_scraper_start_status_key)
+
+	'''Purpose of this block is to retrieve the download URL of the fulltext even if an AttributeError arises'''
+	try:
+		temp_download_url = str(abstract_soup.find('a', {'class':'c-pdf-download__link'}).get('href'))
+		if "/content/pdf/" in temp_download_url:
+			download_url = "https://link.springer.com" + temp_download_url
+		else:
+			download_url = "https://" + temp_download_url[2:]
+	except AttributeError:
+		download_url = "Download link not available"
+
+	download_url_scraper_end_status_key = "Scraped the download link of the fulltext"
+	status_logger(status_logger_name, download_url_scraper_end_status_key)
+
+	return download_url
 
 def abstract_id_scraper(abstract_id_log_name, page_soup, site_url_index, status_logger_name):
 	'''This function helps in obtaining the PII number of the abstract.
 	This number is then coupled with the dynamic URL and provides'''
 	abstract_id_scraper_start_status_key="Scraping IDs"
 	status_logger(status_logger_name, abstract_id_scraper_start_status_key)
-	
+
 	''''This statement collects all the input tags that have the abstract ids in them'''
 	abstract_input_tags = page_soup.findAll('a', {'class':'title'})
 	for abstract_input_tag in abstract_input_tags:
@@ -324,14 +347,14 @@ def abstract_id_scraper(abstract_id_log_name, page_soup, site_url_index, status_
 def word_sorter_list_generator(status_logger_name):
 	word_sorter_list_generator_start_status_key = "Generating the permanent archival list"
 	status_logger(status_logger_name, word_sorter_list_generator_start_status_key)
-	
+
 	'''This function generates the list that hold the Words and corresponding Years of the
 	abstract data words before the actual recursion of scrapping data from the website begins.'''
 	word_sorter_list = []
 
 	word_sorter_list_generator_exit_status_key = "Generated the permanent archival list"
 	status_logger(status_logger_name, word_sorter_list_generator_exit_status_key)
-	
+
 	return word_sorter_list
 
 def delay_function(status_logger_name):
@@ -352,7 +375,7 @@ def delay_function(status_logger_name):
 def processor(abstract_url, urls_to_scrape, abstract_id_log_name, abstracts_log_name, status_logger_name, keywords_to_search):
 	''''Multiple page-cycling function to scrape multiple result pages returned from Springer.
 	print(len(urls_to_scrape))'''
-	
+
 	'''This list will hold all the words mentioned in all the abstracts. It will be later passed on to the
 	visualizer code to generate the trends histogram.'''
 	permanent_word_sorter_list = word_sorter_list_generator(status_logger_name)
